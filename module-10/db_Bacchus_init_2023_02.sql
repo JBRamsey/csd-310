@@ -5,6 +5,11 @@
     Description: Bacchus Case Study database initialization script.
 */
 
+-- Are suppliers delivering on time? Is there a large gap between expected delivery and actual delivery?
+-- A month by month report should show problem areas. 
+-- Are all wines selling as expected. Is one wine not selling? Which distributor carries which wine? **Need way to check wine sales.
+-- During the last four quarters, how many hours did each employee work? **This should work. Run all quarters through SUM to find out totals?
+
 -- Create the Bacchus database
 CREATE DATABASE IF NOT EXISTS bacchus;
 
@@ -24,10 +29,11 @@ GRANT ALL PRIVILEGES ON bacchus.* TO 'bacchus_user'@'localhost';
 
 -- drop tables if they are present
 
-DROP TABLE IF EXISTS order_details_t;
-DROP TABLE IF EXISTS order_t;
+DROP TABLE IF EXISTS order_distribution_details_t;
+DROP TABLE IF EXISTS order_distribution_t;
 DROP TABLE IF EXISTS timeclock_quarterly_t;
 DROP TABLE IF EXISTS supply_inventory_t;
+DROP TABLE IF EXISTS distribution_t;
 DROP TABLE IF EXISTS company_t;
 DROP TABLE IF EXISTS employees_t;
 DROP TABLE IF EXISTS product_t;
@@ -35,12 +41,7 @@ DROP TABLE IF EXISTS supplier_t;
 DROP TABLE IF EXISTS product_cat_t;
 
 
-
-
-
-
-
--- Create Product Category Table
+-- Create Product Category Table: This table shows what category each of Bacchus' wines is, Merlot, Charbdis, Cabernet, or Chardonnay
 
 CREATE TABLE product_cat_t (
     product_cat_id    INT    NOT NULL    AUTO_INCREMENT,
@@ -49,7 +50,7 @@ CREATE TABLE product_cat_t (
     PRIMARY KEY(product_cat_id)
 );
 
--- Create Supplier Table
+-- Create Supplier Table: This table lists the various suppliers that supply equipment to Bacchus for them to make wine.
 
 CREATE TABLE supplier_t (
     supplier_id    INT    NOT NULL    AUTO_INCREMENT,
@@ -63,7 +64,7 @@ CREATE TABLE supplier_t (
     PRIMARY KEY(supplier_id)
 );
 
--- Create Product Table
+-- Create Product Table: This table lists the various products that Bacchus sells to its distributors, it's category, price, and name.
 
 CREATE TABLE product_t (
     product_id     INT    NOT NULL     AUTO_INCREMENT,
@@ -78,10 +79,10 @@ CREATE TABLE product_t (
         REFERENCES product_cat_t(product_cat_id)
 );
 
--- Create the Company Table 
+-- Create the Company Table: This table lists the distributors that Bacchus sells their wine to.
 
-CREATE TABLE company_t (
-    company_id     INT             NOT NULL        AUTO_INCREMENT,
+CREATE TABLE distribution_t (
+    distribution_id     INT             NOT NULL        AUTO_INCREMENT,
     company_name   VARCHAR(100)     NOT NULL,
     company_street  VARCHAR(100)    NOT NULL,
     company_city    VARCHAR(50)    NOT NULL,
@@ -89,10 +90,10 @@ CREATE TABLE company_t (
     company_zip     VARCHAR(15)     NOT NULL,
     company_phone   VARCHAR(15)     NOT NULL,
      
-    PRIMARY KEY(company_id)
+    PRIMARY KEY(distribution_id)
 ); 
 
--- CREATE EMPLOYEE TABLE
+-- CREATE EMPLOYEE TABLE: This table lists all of the employees that Bacchus employs. 
 
 CREATE TABLE employees_t (
     employee_id   INT    NOT NULL    AUTO_INCREMENT,
@@ -105,7 +106,7 @@ CREATE TABLE employees_t (
 );
 
 
--- Create Timeclock Table
+-- Create Timeclock Table: For each of Bacchus' employees, this table determines the end of year quarterly hours for each employee.
 
 CREATE TABLE timeclock_quarterly_t (
     employee_id   INT    NOT NULL,
@@ -123,7 +124,7 @@ CREATE TABLE timeclock_quarterly_t (
 );
 
 
--- Create the Supply Inventory Table
+-- Create the Supply Inventory Table: This table determines needed supplies, how many are needed each month and how many are currently in stock.
 
 CREATE TABLE supply_inventory_t (
     supply_id     INT     NOT NULL     AUTO_INCREMENT,
@@ -139,33 +140,35 @@ CREATE TABLE supply_inventory_t (
         REFERENCES supplier_t(supplier_id)
 );
 
--- Create the Orders Table
+-- Create the Orders Distribution Table: This Table determines the orders from the distributors to Bacchus.
 
-CREATE TABLE order_t (
-    order_id     INT    NOT NULL    AUTO_INCREMENT,
+CREATE TABLE order_distribution_t (
+    order_distribution_id     INT    NOT NULL    AUTO_INCREMENT,
     order_date   DATE    NOT NULL,
     order_shipdate    DATE    NOT NULL,
-    company_id    INT    NOT NULL,
+    order_arrivaldate    DATE   NOT NULL,
+    distribution_id    INT    NOT NULL,
 
-    PRIMARY KEY(order_id),
+    PRIMARY KEY(order_distribution_id),
 
-    CONSTRAINT company_fk
-    FOREIGN KEY(company_id)
-        REFERENCES company_t(company_id)
+    CONSTRAINT distribution_fk
+    FOREIGN KEY(distribution_id)
+        REFERENCES distribution_t(distribution_id)
 );
 
 -- Create Order Details Table
 
-CREATE TABLE order_details_t (
-    order_id     INT    NOT NULL,
+CREATE TABLE order_distribution_details_t (
+    order_distribution_id     INT    NOT NULL,
     product_id    INT    NOT NULL,
     quantity    DECIMAL(5,2)    NOT NULL,
+    subtotal_cost    DECIMAL(5,2)    NOT NULL,
 
-    PRIMARY KEY(order_id, product_id),
+    PRIMARY KEY(order_distribution_id, product_id),
 
-    CONSTRAINT order_fk
-    FOREIGN KEY(order_id)
-        REFERENCES order_t(order_id),
+    CONSTRAINT order_distribution_fk
+    FOREIGN KEY(order_distribution_id)
+        REFERENCES order_distribution_t(order_distribution_id),
 
     CONSTRAINT product_fk
     FOREIGN KEY (product_id)
@@ -220,22 +223,22 @@ INSERT INTO product_t(product_name, unit_price, product_cat_id)
 
 -- insert distributor records
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('Ra Fine Dining', '123 Mystic Maple Dr.', 'Austin', 'TX', '78701', '555-1244');
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('The Anubis Club', '456 Lapis Horizon Ln.', 'Austin', 'TX', '78701', '555-1245');
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('Horus Wines', '789 Crimson Clover Ct.', 'Seattle', 'WA', '98101', '555-1246');
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('Zues Diner', '1011 Whispering Willow Wy.', 'Seattle', 'WA', '98101', '555-1247');
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('Ares Nightclub', '1213 Emerald Echo Blvd.', 'Miami', 'FL', '33101', '555-1248');
 
-INSERT INTO company_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
+INSERT INTO distribution_t(company_name, company_street, company_city, company_state, company_zip, company_phone)
     VALUES('Hera-Mart', '1415 Twilight Tango Ter.', 'Miami', 'FL', '33101', '555-1249');
 
 -- insert employee records
@@ -307,40 +310,40 @@ INSERT INTO supply_inventory_t(supply_name, supply_inventory_current, supply_inv
 
 -- insert order records
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-27', '2023-12-29', 1);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-11', '2023-12-15', '2023-12-29', 1);
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-28', '2023-12-29', 2);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-15', '2023-12-20', '2023-12-31', 2);
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-28', '2023-12-29', 3);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-22', '2023-12-24', '2023-12-29', 3);
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-29', '2023-12-29', 4);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-20', '2023-12-23', '2023-12-29', 4);
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-23', '2023-12-29', 5);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-23', '2023-12-27', '2023-12-30', 5);
 
-INSERT INTO order_t(order_date, order_shipdate, company_id)
-    VALUES('2023-12-12', '2023-12-29', 6);
+INSERT INTO order_distribution_t(order_date, order_shipdate, order_arrivaldate, order_distribution_id)
+    VALUES('2023-12-12', '2023-12-21', '2023-12-31', 6);
 
 -- insert order details
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(2, 2, 300);
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(1, 3, 400);
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(3, 2, 200);
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(6, 1, 100);
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(4, 4, 300);
 
-INSERT INTO order_details_t (order_id, product_id, quantity)
+INSERT INTO order_distribution_details_t (order_distribution_id, product_id, quantity, subtotal_cost)
     VALUES(5, 1, 200);
